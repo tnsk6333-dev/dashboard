@@ -39,10 +39,14 @@
       <label for="monthSelect">조회 월</label>
       <select id="monthSelect" onchange="loadData()">
         <option value="">전체 기간</option>
+        <option value="2025-12">2025년 12월</option>
         <option value="2026-01">2026년 1월</option>
         <option value="2026-02">2026년 2월</option>
         <option value="2026-03">2026년 3월</option>
         <option value="2026-04">2026년 4월</option>
+        <option value="2026-05">2026년 5월</option>
+        <option value="2026-06">2026년 6월</option>
+        <option value="2026-07">2026년 7월</option>
       </select>
       <label for="metricSelect" style="margin-left:10px;">비교 항목</label>
       <select id="metricSelect" onchange="renderCharts()"></select>
@@ -79,14 +83,14 @@
 </div>
 
 <script>
-// ⚠️ 아래 큰따옴표 안에 구글 Apps Script 웹 앱 URL을 넣으세요!
+// 구글 Apps Script 웹 앱 URL
 const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwGp-oDp-__zxx4DFWi36EPmZXIyg___cSDubEEaJGEE0NKBXzGsPUxMI1Gj8aHKkAS/exec";
 
 const METRICS = ["찾B","만픽","찾A","합B","합A","영따","복A","복B","복C","센터등록"];
 let ROWS = [];
 let barChart, summaryChart;
 
-// 1. 비교 항목 드롭다운 초기화 (에러 방지용)
+// 1. 비교 항목 드롭다운 초기화
 function initMetricSelect() {
   const metricSelect = document.getElementById('metricSelect');
   metricSelect.innerHTML = '';
