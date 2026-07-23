@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>전도 달성률 대시보드</title>
+<title>3구역 전도 현황 대시보드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   :root { --bg:#f6f8fc; --panel:#ffffff; --text:#18212f; --muted:#5f6b7a; --line:#d9e1ee; --shadow:0 10px 30px rgba(23,38,66,.08); --radius:20px; }
@@ -79,47 +79,61 @@
 </div>
 
 <script>
-// ⚠️ 아래 URL을 1단계에서 얻은 구글 Apps Script 웹 앱 URL로 바꾸세요!
+// ⚠️ 아래 큰따옴표 안에 구글 Apps Script 웹 앱 URL을 넣으세요!
 const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwGp-oDp-__zxx4DFWi36EPmZXIyg___cSDubEEaJGEE0NKBXzGsPUxMI1Gj8aHKkAS/exec";
 
 const METRICS = ["찾B","만픽","찾A","합B","합A","영따","복A","복B","복C","센터등록"];
 let ROWS = [];
 let barChart, summaryChart;
 
-// 드롭다운 초기화
-const metricSelect = document.getElementById('metricSelect');
-METRICS.forEach(m => {
-  const opt = document.createElement('option');
-  opt.value = m; opt.textContent = m;
-  metricSelect.appendChild(opt);
-});
+// 1. 비교 항목 드롭다운 초기화 (에러 방지용)
+function initMetricSelect() {
+  const metricSelect = document.getElementById('metricSelect');
+  metricSelect.innerHTML = '';
+  METRICS.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m;
+    metricSelect.appendChild(opt);
+  });
+}
 
+// 2. 데이터 불러오기
 async function loadData() {
   const month = document.getElementById('monthSelect').value;
-  const url = `${GOOGLE_SHEET_API_URL}?month=${month}`;
+  const url = month ? `${GOOGLE_SHEET_API_URL}?month=${month}` : GOOGLE_SHEET_API_URL;
   try {
     const res = await fetch(url);
     ROWS = await res.json();
     renderTable();
     renderCharts();
   } catch (e) {
-    console.error("데이터 로드 실패", e);
+    console.error("데이터 로드 실패:", e);
   }
 }
 
+// 3. 표 출력
 function renderTable() {
   const tbody = document.getElementById('tableBody');
+  if(!ROWS || ROWS.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="12">데이터가 없습니다.</td></tr>';
+    return;
+  }
   tbody.innerHTML = ROWS.map(r => `
     <tr>
-      <td>${r.name}</td><td>${r.zone}</td>
+      <td>${r.name || ''}</td><td>${r.zone || ''}</td>
       ${METRICS.map(m => `<td><b>${r[m] || 0}</b></td>`).join('')}
     </tr>
   `).join('');
 }
 
+// 4. 차트 출력
 function renderCharts() {
-  const selectedMetric = metricSelect.value;
+  const metricSelect = document.getElementById('metricSelect');
+  const selectedMetric = metricSelect.value || "찾B";
   document.getElementById('chartTitle').textContent = `인도자별 ${selectedMetric} 달성 현황`;
+
+  if(!ROWS || ROWS.length === 0) return;
 
   // 1. 개인별 막대차트
   const ctx1 = document.getElementById('barChart');
@@ -159,6 +173,8 @@ function renderCharts() {
   });
 }
 
+// 초기화 호출
+initMetricSelect();
 loadData();
 </script>
 </body>
