@@ -180,16 +180,13 @@ let WEEKLY_DATA = null;
 
 let barChartTotal, summaryChartTotal, mainChartWeekly;
 
-// 💡 날짜 텍스트 정제 함수 ("Mon Jul 20..." -> "7월 20일 주간")
+// 날짜 텍스트 정제 함수 ("Mon Jul 20..." -> "7월 20일 주간")
 function formatWeekLabel(rawStr) {
   if (!rawStr) return "주차 선택";
   const d = new Date(rawStr);
   if (!isNaN(d.getTime())) {
-    const month = d.getMonth() + 1;
-    const date = d.getDate();
-    return `${month}월 ${date}일 주간`;
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 주간`;
   }
-  // YYYY-MM-DD 형식일 경우
   if (typeof rawStr === 'string' && rawStr.includes('-')) {
     const parts = rawStr.split('T')[0].split('-');
     if (parts.length === 3) {
@@ -217,14 +214,13 @@ function initDropdowns() {
   });
 }
 
-// 1. 누적 대시보드
+// 1. 상단 누적 대시보드
 async function loadTotalData() {
   const month = document.getElementById('monthSelect').value;
-  const url = month ? `${GOOGLE_SHEET_API_URL}?month=${month}` : GOOGLE_SHEET_API_URL;
+  const url = `${GOOGLE_SHEET_API_URL}?type=total` + (month ? `&month=${month}` : '');
   try {
     const res = await fetch(url);
-    const data = await res.json();
-    TOTAL_ROWS = Array.isArray(data) ? data : (data.rows ? data.rows.map(r=>({name:r.name, zone:r.zone, ...r.actual})) : []);
+    TOTAL_ROWS = await res.json();
     renderTotalTable();
     renderTotalCharts();
   } catch (e) { console.error("상단 데이터 로드 실패", e); }
@@ -287,21 +283,20 @@ function renderTotalCharts() {
   });
 }
 
-// 2. 주간 대시보드
+// 2. 하단 주간 대시보드
 async function loadWeeklyData() {
   const week = document.getElementById('weekSelect').value;
-  const url = week ? `${GOOGLE_SHEET_API_URL}?week=${encodeURIComponent(week)}` : GOOGLE_SHEET_API_URL;
+  const url = `${GOOGLE_SHEET_API_URL}` + (week ? `?week=${encodeURIComponent(week)}` : '');
   try {
     const res = await fetch(url);
     WEEKLY_DATA = await res.json();
     
-    // 💡 날짜 드롭다운 정제해서 생성
     const weekSelect = document.getElementById('weekSelect');
     if (WEEKLY_DATA.availableWeeks && weekSelect.children.length === 0) {
       WEEKLY_DATA.availableWeeks.forEach(w => {
         const opt = document.createElement('option');
         opt.value = w; 
-        opt.textContent = formatWeekLabel(w); // 깔끔한 포맷팅 적용
+        opt.textContent = formatWeekLabel(w);
         if (w === WEEKLY_DATA.selectedWeek) opt.selected = true;
         weekSelect.appendChild(opt);
       });
@@ -413,7 +408,7 @@ function renderWeeklyTable() {
   }).join('');
 }
 
-// 실행
+// 최초 실행
 initDropdowns();
 loadTotalData();
 loadWeeklyData();
