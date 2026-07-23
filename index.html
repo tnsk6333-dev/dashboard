@@ -108,7 +108,9 @@
 </div>
 
 <script>
+// 수정된 Apps Script 웹 앱 URL
 const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwGp-oDp-__zxx4DFWi36EPmZXIyg___cSDubEEaJGEE0NKBXzGsPUxMI1Gj8aHKkAS/exec";
+
 const METRICS = ["찾B", "만픽", "찾A", "합B"];
 let DATA = null;
 let mainChart;
@@ -128,7 +130,7 @@ async function loadData() {
     const res = await fetch(url);
     DATA = await res.json();
     
-    // 주차 드롭다운 채우기
+    // 주차 드롭다운 생성
     const weekSelect = document.getElementById('weekSelect');
     if (DATA.availableWeeks && weekSelect.children.length === 0) {
       DATA.availableWeeks.forEach(w => {
@@ -147,8 +149,9 @@ async function loadData() {
 
 function renderTopMetrics() {
   const el = document.getElementById('metrics');
+  if (!DATA || !DATA.totals) return;
   el.innerHTML = METRICS.map(m => {
-    const t = DATA.totals[m];
+    const t = DATA.totals[m] || { goal: 0, result: 0, rate: 0 };
     return `
       <div class="metric">
         <div class="label">${m}(주간)</div>
@@ -168,6 +171,7 @@ function renderAll() {
 
 function renderBars(key) {
   document.getElementById('barsTitle').textContent = key + " 개인별 달성률";
+  if (!DATA || !DATA.rows) return;
   const sorted = [...DATA.rows].sort((a,b) => (b.rate[key]||0) - (a.rate[key]||0));
   const el = document.getElementById('bars');
   el.innerHTML = sorted.map(r => `
@@ -181,6 +185,7 @@ function renderBars(key) {
 }
 
 function renderLeaders(key) {
+  if (!DATA || !DATA.rows) return;
   const sorted = [...DATA.rows].sort((a,b) => (b.rate[key]||0) - (a.rate[key]||0));
   const top = sorted[0] || { name: '없음', zone: '', rate: {} };
   const over100 = DATA.rows.filter(r => (r.rate[key]||0) >= 100);
@@ -201,6 +206,7 @@ function renderMainChart(key) {
   const ctx = document.getElementById('mainChart');
   document.getElementById('chartTitle').textContent = key + " 달성률 그래프";
   if (mainChart) mainChart.destroy();
+  if (!DATA || !DATA.rows) return;
   
   const labels = DATA.rows.map(r => r.name);
   const rates = DATA.rows.map(r => r.rate[key] || 0);
@@ -222,17 +228,18 @@ function renderMainChart(key) {
 
 function renderTable() {
   const el = document.getElementById('detailTable');
+  if (!DATA || !DATA.rows) return;
   el.innerHTML = DATA.rows.map(r => {
-    const avg = Math.round((r.rate["찾B"] + r.rate["만픽"] + r.rate["찾A"] + r.rate["합B"]) / 4);
+    const avg = Math.round(((r.rate["찾B"]||0) + (r.rate["만픽"]||0) + (r.rate["찾A"]||0) + (r.rate["합B"]||0)) / 4);
     const cls = avg >= 100 ? 'good' : avg >= 60 ? 'mid' : 'low';
     const status = avg >= 100 ? '달성' : avg >= 60 ? '진행' : '보완';
     return `
       <tr>
         <td>${r.name}</td>
-        <td><span class="heat-cell">${r.rate["찾B"]}%</span></td>
-        <td><span class="heat-cell">${r.rate["만픽"]}%</span></td>
-        <td><span class="heat-cell">${r.rate["찾A"]}%</span></td>
-        <td><span class="heat-cell">${r.rate["합B"]}%</span></td>
+        <td><span class="heat-cell">${r.rate["찾B"]||0}%</span></td>
+        <td><span class="heat-cell">${r.rate["만픽"]||0}%</span></td>
+        <td><span class="heat-cell">${r.rate["찾A"]||0}%</span></td>
+        <td><span class="heat-cell">${r.rate["합B"]||0}%</span></td>
         <td><b>${avg}%</b></td>
         <td><span class="status ${cls}">${status}</span></td>
       </tr>
