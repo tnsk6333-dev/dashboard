@@ -180,17 +180,18 @@ let WEEKLY_DATA = null;
 
 let barChartTotal, summaryChartTotal, mainChartWeekly;
 
-// 날짜 텍스트 정제 함수 ("Mon Jul 20..." -> "7월 20일 주간")
+// 💡 전년도는 연도 기재(예: 2025년 12월 22일 주간), 올해는 (예: 7월 20일 주간)
 function formatWeekLabel(rawStr) {
   if (!rawStr) return "주차 선택";
-  const d = new Date(rawStr);
-  if (!isNaN(d.getTime())) {
-    return `${d.getMonth() + 1}월 ${d.getDate()}일 주간`;
-  }
-  if (typeof rawStr === 'string' && rawStr.includes('-')) {
-    const parts = rawStr.split('T')[0].split('-');
-    if (parts.length === 3) {
-      return `${parseInt(parts[1], 10)}월 ${parseInt(parts[2], 10)}일 주간`;
+  var parts = String(rawStr).split('T')[0].split('-');
+  if (parts.length === 3) {
+    var year = parseInt(parts[0], 10);
+    var month = parseInt(parts[1], 10);
+    var day = parseInt(parts[2], 10);
+    if (year !== 2026) {
+      return `${year}년 ${month}월 ${day}일 주간`;
+    } else {
+      return `${month}월 ${day}일 주간`;
     }
   }
   return rawStr;
@@ -214,7 +215,7 @@ function initDropdowns() {
   });
 }
 
-// 1. 상단 누적 대시보드
+// 1. 누적 대시보드
 async function loadTotalData() {
   const month = document.getElementById('monthSelect').value;
   const url = `${GOOGLE_SHEET_API_URL}?type=total` + (month ? `&month=${month}` : '');
@@ -283,7 +284,7 @@ function renderTotalCharts() {
   });
 }
 
-// 2. 하단 주간 대시보드
+// 2. 주간 대시보드
 async function loadWeeklyData() {
   const week = document.getElementById('weekSelect').value;
   const url = `${GOOGLE_SHEET_API_URL}` + (week ? `?week=${encodeURIComponent(week)}` : '');
@@ -292,7 +293,8 @@ async function loadWeeklyData() {
     WEEKLY_DATA = await res.json();
     
     const weekSelect = document.getElementById('weekSelect');
-    if (WEEKLY_DATA.availableWeeks && weekSelect.children.length === 0) {
+    if (WEEKLY_DATA.availableWeeks) {
+      weekSelect.innerHTML = ''; // 최신순 재정렬을 위해 비우기
       WEEKLY_DATA.availableWeeks.forEach(w => {
         const opt = document.createElement('option');
         opt.value = w; 
