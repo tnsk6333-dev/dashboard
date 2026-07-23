@@ -34,7 +34,6 @@
   td:first-child { text-align:left; font-weight:bold; }
   .table-wrap { overflow-x:auto; max-height:400px; border:1px solid var(--line); border-radius:12px; }
   
-  /* 주간 지표 전용 스타일 */
   .metric-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
   .metric { background:#f8fbff; border:1px solid #e3ebf7; border-radius:16px; padding:12px; }
   .metric .label { font-size:12px; color:var(--muted); font-weight:bold; margin-bottom:6px; }
@@ -57,9 +56,7 @@
 <body>
 <div class="wrap">
 
-  <!-- ========================================== -->
-  <!-- 1. [상단] 전체 누적 전도 현황 대시보드 -->
-  <!-- ========================================== -->
+  <!-- 1. [상단] 누적 전도 현황 -->
   <section class="hero">
     <div>
       <h1>📊 3구역 누적 전도 현황 대시보드</h1>
@@ -113,13 +110,11 @@
 
   <hr class="section-divider" />
 
-  <!-- ========================================== -->
-  <!-- 2. [하단] 5부 스타일 주간 목표 달성률 대시보드 -->
-  <!-- ========================================== -->
+  <!-- 2. [하단] 주간 목표 달성률 -->
   <section class="hero">
     <div>
       <h2>🎯 3구역 주간 목표 달성률 대시보드</h2>
-      <p style="margin:0; color:var(--muted); font-size:13px;">주간 목표 대비 실적 달성률 현황 (5부 스타일)</p>
+      <p style="margin:0; color:var(--muted); font-size:13px;">주간 목표 대비 실적 달성률 현황입니다.</p>
     </div>
     <div class="toolbar">
       <label for="weekSelect">기준 주차</label>
@@ -177,9 +172,6 @@
 <script>
 const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwGp-oDp-__zxx4DFWi36EPmZXIyg___cSDubEEaJGEE0NKBXzGsPUxMI1Gj8aHKkAS/exec";
 
-// ----------------------------------------------------
-// [공통 & 변수]
-// ----------------------------------------------------
 const METRICS_TOTAL = ["찾B","만픽","찾A","합B","합A","영따","복A","복B","복C","센터등록"];
 const METRICS_WEEKLY = ["찾B", "만픽", "찾A", "합B"];
 
@@ -188,7 +180,25 @@ let WEEKLY_DATA = null;
 
 let barChartTotal, summaryChartTotal, mainChartWeekly;
 
-// 초기 드롭다운 셋팅
+// 💡 날짜 텍스트 정제 함수 ("Mon Jul 20..." -> "7월 20일 주간")
+function formatWeekLabel(rawStr) {
+  if (!rawStr) return "주차 선택";
+  const d = new Date(rawStr);
+  if (!isNaN(d.getTime())) {
+    const month = d.getMonth() + 1;
+    const date = d.getDate();
+    return `${month}월 ${date}일 주간`;
+  }
+  // YYYY-MM-DD 형식일 경우
+  if (typeof rawStr === 'string' && rawStr.includes('-')) {
+    const parts = rawStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+      return `${parseInt(parts[1], 10)}월 ${parseInt(parts[2], 10)}일 주간`;
+    }
+  }
+  return rawStr;
+}
+
 function initDropdowns() {
   const mTotal = document.getElementById('metricSelectTotal');
   mTotal.innerHTML = '';
@@ -207,9 +217,7 @@ function initDropdowns() {
   });
 }
 
-// ----------------------------------------------------
-// 1. 상단 누적 대시보드 로직
-// ----------------------------------------------------
+// 1. 누적 대시보드
 async function loadTotalData() {
   const month = document.getElementById('monthSelect').value;
   const url = month ? `${GOOGLE_SHEET_API_URL}?month=${month}` : GOOGLE_SHEET_API_URL;
@@ -279,21 +287,21 @@ function renderTotalCharts() {
   });
 }
 
-// ----------------------------------------------------
-// 2. 하단 주간 달성률 대시보드 로직
-// ----------------------------------------------------
+// 2. 주간 대시보드
 async function loadWeeklyData() {
   const week = document.getElementById('weekSelect').value;
-  const url = week ? `${GOOGLE_SHEET_API_URL}?week=${week}` : GOOGLE_SHEET_API_URL;
+  const url = week ? `${GOOGLE_SHEET_API_URL}?week=${encodeURIComponent(week)}` : GOOGLE_SHEET_API_URL;
   try {
     const res = await fetch(url);
     WEEKLY_DATA = await res.json();
     
+    // 💡 날짜 드롭다운 정제해서 생성
     const weekSelect = document.getElementById('weekSelect');
     if (WEEKLY_DATA.availableWeeks && weekSelect.children.length === 0) {
       WEEKLY_DATA.availableWeeks.forEach(w => {
         const opt = document.createElement('option');
-        opt.value = w; opt.textContent = w + " 주간";
+        opt.value = w; 
+        opt.textContent = formatWeekLabel(w); // 깔끔한 포맷팅 적용
         if (w === WEEKLY_DATA.selectedWeek) opt.selected = true;
         weekSelect.appendChild(opt);
       });
@@ -405,7 +413,7 @@ function renderWeeklyTable() {
   }).join('');
 }
 
-// 최초 실행
+// 실행
 initDropdowns();
 loadTotalData();
 loadWeeklyData();
