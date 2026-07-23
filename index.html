@@ -24,10 +24,10 @@
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
   .grid3 { display:grid; grid-template-columns:1.1fr 1.1fr .8fr; gap:18px; margin-bottom:18px; }
   .layout2 { display:grid; grid-template-columns:1.25fr .75fr; gap:18px; margin-bottom:18px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; }
   .card h3 { margin:0 0 4px; font-size:18px; }
   .sub { color:var(--muted); font-size:12px; margin-bottom:14px; }
-  .chartbox { height:320px; }
+  .chartbox { height:260px; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th { background:#f4f8ff; padding:10px; border-bottom:1px solid var(--line); text-align:center; }
   td { padding:10px; border-bottom:1px solid #edf2f9; text-align:center; }
@@ -180,7 +180,6 @@ let WEEKLY_DATA = null;
 
 let barChartTotal, summaryChartTotal, mainChartWeekly;
 
-// 💡 전년도는 연도 기재(예: 2025년 12월 22일 주간), 올해는 (예: 7월 20일 주간)
 function formatWeekLabel(rawStr) {
   if (!rawStr) return "주차 선택";
   var parts = String(rawStr).split('T')[0].split('-');
@@ -215,7 +214,7 @@ function initDropdowns() {
   });
 }
 
-// 1. 누적 대시보드
+// 1. 상단 누적 대시보드
 async function loadTotalData() {
   const month = document.getElementById('monthSelect').value;
   const url = `${GOOGLE_SHEET_API_URL}?type=total` + (month ? `&month=${month}` : '');
@@ -284,7 +283,7 @@ function renderTotalCharts() {
   });
 }
 
-// 2. 주간 대시보드
+// 2. 하단 주간 대시보드
 async function loadWeeklyData() {
   const week = document.getElementById('weekSelect').value;
   const url = `${GOOGLE_SHEET_API_URL}` + (week ? `?week=${encodeURIComponent(week)}` : '');
@@ -294,7 +293,7 @@ async function loadWeeklyData() {
     
     const weekSelect = document.getElementById('weekSelect');
     if (WEEKLY_DATA.availableWeeks) {
-      weekSelect.innerHTML = ''; // 최신순 재정렬을 위해 비우기
+      weekSelect.innerHTML = '';
       WEEKLY_DATA.availableWeeks.forEach(w => {
         const opt = document.createElement('option');
         opt.value = w; 
