@@ -3,10 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>3구역 전도 현황 대시보드</title>
+<title>3구역 주간 달성률 대시보드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  :root { --bg:#f6f8fc; --panel:#ffffff; --text:#18212f; --muted:#5f6b7a; --line:#d9e1ee; --shadow:0 10px 30px rgba(23,38,66,.08); --radius:20px; }
+  :root {
+    --bg:#f6f8fc; --panel:#ffffff; --text:#18212f; --muted:#5f6b7a; --line:#d9e1ee;
+    --navy:#1e3a5f; --blue:#2f6fed; --green:#16a34a; --amber:#d97706; --red:#dc2626;
+    --shadow:0 10px 30px rgba(23,38,66,.08); --radius:20px;
+  }
   * { box-sizing:border-box; }
   body { margin:0; font-family:"Pretendard","Apple SD Gothic Neo",sans-serif; background:linear-gradient(180deg,#f7f9fd 0%,#eef3fb 100%); color:var(--text); }
   .wrap { max-width:1440px; margin:0 auto; padding:24px 16px; }
@@ -15,170 +19,227 @@
   .toolbar { display:flex; gap:12px; align-items:center; background:rgba(255,255,255,.8); padding:10px 16px; border-radius:999px; border:1px solid var(--line); box-shadow:var(--shadow); }
   label { font-size:13px; font-weight:bold; color:var(--muted); }
   select { border:1px solid var(--line); border-radius:999px; padding:8px 12px; font-size:14px; background:#fff; cursor:pointer; }
-  .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+  .grid { display:grid; grid-template-columns:1.1fr 1.1fr .8fr; gap:18px; margin-bottom:18px; }
+  .layout2 { display:grid; grid-template-columns:1.25fr .75fr; gap:18px; margin-bottom:18px; }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; }
   .card h3 { margin:0 0 4px; font-size:18px; }
   .sub { color:var(--muted); font-size:12px; margin-bottom:14px; }
+  .metric-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .metric { background:#f8fbff; border:1px solid #e3ebf7; border-radius:16px; padding:12px; }
+  .metric .label { font-size:12px; color:var(--muted); font-weight:bold; margin-bottom:6px; }
+  .metric .value { font-size:24px; font-weight:900; }
+  .metric .delta { font-size:11px; color:var(--muted); margin-top:4px; font-weight:bold; }
+  .bars { display:flex; flex-direction:column; gap:10px; }
+  .bar-row { display:grid; grid-template-columns:70px 45px 1fr 50px; align-items:center; gap:8px; font-size:13px; }
+  .track { height:14px; background:#e9eef7; border-radius:999px; overflow:hidden; }
+  .fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#2f6fed,#62a6ff); }
+  .leaders { display:grid; gap:10px; }
+  .leader { display:flex; align-items:center; justify-content:space-between; background:#f8fbff; border:1px solid #e3ebf7; border-radius:14px; padding:10px 12px; }
+  .badge { padding:6px 10px; border-radius:999px; background:#eff6ff; color:#2459c3; font-weight:bold; font-size:12px; }
   .chartbox { height:320px; }
-  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
   th { background:#f4f8ff; padding:10px; border-bottom:1px solid var(--line); text-align:center; }
   td { padding:10px; border-bottom:1px solid #edf2f9; text-align:center; }
   td:first-child { text-align:left; font-weight:bold; }
-  .table-wrap { overflow-x:auto; max-height:400px; border:1px solid var(--line); border-radius:12px; }
-  @media(max-width:768px) { .grid { grid-template-columns:1fr; } }
+  .table-wrap { overflow-x:auto; max-height:420px; border:1px solid var(--line); border-radius:12px; }
+  .heat-cell { display:inline-block; min-width:50px; padding:5px 8px; border-radius:8px; font-weight:bold; }
+  .status { display:inline-flex; padding:4px 8px; border-radius:999px; font-weight:bold; font-size:11px; }
+  .good { background:#ecfdf3; color:#15803d; } .mid { background:#fff7ed; color:#c2410c; } .low { background:#fef2f2; color:#dc2626; }
+  @media(max-width:1024px) { .grid, .layout2 { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <section class="hero">
     <div>
-      <h1>3구역 전도 현황 대시보드</h1>
-      <p style="margin:0; color:var(--muted); font-size:13px;">구글 시트 실시간 연동 대시보드</p>
+      <h1>3구역 주간 달성률 대시보드</h1>
+      <p style="margin:0; color:var(--muted); font-size:13px;">주간 목표 대비 실적 달성률 현황입니다.</p>
     </div>
     <div class="toolbar">
-      <label for="monthSelect">조회 월</label>
-      <select id="monthSelect" onchange="loadData()">
-        <option value="">전체 기간</option>
-        <option value="2025-12">2025년 12월</option>
-        <option value="2026-01">2026년 1월</option>
-        <option value="2026-02">2026년 2월</option>
-        <option value="2026-03">2026년 3월</option>
-        <option value="2026-04">2026년 4월</option>
-        <option value="2026-05">2026년 5월</option>
-        <option value="2026-06">2026년 6월</option>
-        <option value="2026-07">2026년 7월</option>
-      </select>
+      <label for="weekSelect">기준 주차</label>
+      <select id="weekSelect" onchange="loadData()"></select>
       <label for="metricSelect" style="margin-left:10px;">비교 항목</label>
-      <select id="metricSelect" onchange="renderCharts()"></select>
+      <select id="metricSelect" onchange="renderAll()"></select>
     </div>
   </section>
 
   <section class="grid">
     <div class="card">
-      <h3 id="chartTitle">인도자별 단계 비교</h3>
-      <div class="sub">선택한 단계의 인도자별 누적 달성 인원입니다.</div>
-      <div class="chartbox"><canvas id="barChart"></canvas></div>
+      <h3>주간 핵심 지표</h3>
+      <div class="sub">3구역 전체 목표 및 결과입니다.</div>
+      <div id="metrics" class="metric-grid"></div>
     </div>
+
     <div class="card">
-      <h3>전체 단계별 합계</h3>
-      <div class="sub">3구역 전체 누적 달성 현황입니다.</div>
-      <div class="chartbox"><canvas id="summaryChart"></canvas></div>
+      <h3 id="barsTitle">개인별 달성률 비교</h3>
+      <div class="sub">선택한 항목 기준 개인별 달성률입니다.</div>
+      <div id="bars" class="bars"></div>
+    </div>
+
+    <div class="card">
+      <h3>선택 항목 리더</h3>
+      <div class="sub">선택 항목 기준 상위 현황입니다.</div>
+      <div id="leaders" class="leaders"></div>
     </div>
   </section>
 
-  <section class="card">
-    <h3>인도자별 상세 달성 현황</h3>
-    <div class="sub">모든 단계별 누적 합계 표입니다.</div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>인도자</th><th>구역</th><th>찾B</th><th>만픽</th><th>찾A</th><th>합B</th><th>합A</th><th>영따</th><th>복A</th><th>복B</th><th>복C</th><th>센터등록</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
+  <section class="layout2">
+    <div class="card">
+      <h3 id="chartTitle">개인별 막대그래프</h3>
+      <div class="sub">목표 달성률 시각화 차트입니다.</div>
+      <div class="chartbox"><canvas id="mainChart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h3>개인별 달성률 테이블</h3>
+      <div class="sub">주간 달성률 히트맵 표입니다.</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>이름</th><th>찾B</th><th>만픽</th><th>찾A</th><th>합B</th><th>평균</th><th>상태</th>
+            </tr>
+          </thead>
+          <tbody id="detailTable"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 </div>
 
 <script>
-// 구글 Apps Script 웹 앱 URL
 const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwGp-oDp-__zxx4DFWi36EPmZXIyg___cSDubEEaJGEE0NKBXzGsPUxMI1Gj8aHKkAS/exec";
+const METRICS = ["찾B", "만픽", "찾A", "합B"];
+let DATA = null;
+let mainChart;
 
-const METRICS = ["찾B","만픽","찾A","합B","합A","영따","복A","복B","복C","센터등록"];
-let ROWS = [];
-let barChart, summaryChart;
+// 비교항목 드롭다운 생성
+const metricSelect = document.getElementById('metricSelect');
+METRICS.forEach(m => {
+  const opt = document.createElement('option');
+  opt.value = m; opt.textContent = m + " (주간)";
+  metricSelect.appendChild(opt);
+});
 
-// 1. 비교 항목 드롭다운 초기화
-function initMetricSelect() {
-  const metricSelect = document.getElementById('metricSelect');
-  metricSelect.innerHTML = '';
-  METRICS.forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = m;
-    metricSelect.appendChild(opt);
-  });
-}
-
-// 2. 데이터 불러오기
 async function loadData() {
-  const month = document.getElementById('monthSelect').value;
-  const url = month ? `${GOOGLE_SHEET_API_URL}?month=${month}` : GOOGLE_SHEET_API_URL;
+  const week = document.getElementById('weekSelect').value;
+  const url = week ? `${GOOGLE_SHEET_API_URL}?week=${week}` : GOOGLE_SHEET_API_URL;
   try {
     const res = await fetch(url);
-    ROWS = await res.json();
+    DATA = await res.json();
+    
+    // 주차 드롭다운 채우기
+    const weekSelect = document.getElementById('weekSelect');
+    if (DATA.availableWeeks && weekSelect.children.length === 0) {
+      DATA.availableWeeks.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w; opt.textContent = w + " 주간";
+        if (w === DATA.selectedWeek) opt.selected = true;
+        weekSelect.appendChild(opt);
+      });
+    }
+
+    renderTopMetrics();
     renderTable();
-    renderCharts();
-  } catch (e) {
-    console.error("데이터 로드 실패:", e);
-  }
+    renderAll();
+  } catch (e) { console.error("데이터 로드 실패", e); }
 }
 
-// 3. 표 출력
-function renderTable() {
-  const tbody = document.getElementById('tableBody');
-  if(!ROWS || ROWS.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="12">데이터가 없습니다.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = ROWS.map(r => `
-    <tr>
-      <td>${r.name || ''}</td><td>${r.zone || ''}</td>
-      ${METRICS.map(m => `<td><b>${r[m] || 0}</b></td>`).join('')}
-    </tr>
+function renderTopMetrics() {
+  const el = document.getElementById('metrics');
+  el.innerHTML = METRICS.map(m => {
+    const t = DATA.totals[m];
+    return `
+      <div class="metric">
+        <div class="label">${m}(주간)</div>
+        <div class="value">${t.rate}%</div>
+        <div class="delta">목표 ${t.goal} · 결과 ${t.result}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderAll() {
+  const key = metricSelect.value;
+  renderBars(key);
+  renderLeaders(key);
+  renderMainChart(key);
+}
+
+function renderBars(key) {
+  document.getElementById('barsTitle').textContent = key + " 개인별 달성률";
+  const sorted = [...DATA.rows].sort((a,b) => (b.rate[key]||0) - (a.rate[key]||0));
+  const el = document.getElementById('bars');
+  el.innerHTML = sorted.map(r => `
+    <div class="bar-row">
+      <div style="font-weight:bold;">${r.name}</div>
+      <div style="color:var(--muted);">${r.zone}</div>
+      <div class="track"><div class="fill" style="width:${Math.min(r.rate[key]||0, 100)}%;"></div></div>
+      <div style="font-weight:bold; text-align:right;">${r.rate[key]||0}%</div>
+    </div>
   `).join('');
 }
 
-// 4. 차트 출력
-function renderCharts() {
-  const metricSelect = document.getElementById('metricSelect');
-  const selectedMetric = metricSelect.value || "찾B";
-  document.getElementById('chartTitle').textContent = `인도자별 ${selectedMetric} 달성 현황`;
+function renderLeaders(key) {
+  const sorted = [...DATA.rows].sort((a,b) => (b.rate[key]||0) - (a.rate[key]||0));
+  const top = sorted[0] || { name: '없음', zone: '', rate: {} };
+  const over100 = DATA.rows.filter(r => (r.rate[key]||0) >= 100);
 
-  if(!ROWS || ROWS.length === 0) return;
+  document.getElementById('leaders').innerHTML = `
+    <div class="leader">
+      <div><span style="font-size:12px;color:var(--muted);">1위 인도자</span><br><strong>${top.name} (${top.zone})</strong></div>
+      <div class="badge">${top.rate[key]||0}%</div>
+    </div>
+    <div class="leader">
+      <div><span style="font-size:12px;color:var(--muted);">100% 이상 달성</span><br><strong>${over100.length}명</strong></div>
+      <div class="badge">${over100.map(r=>r.name).join(', ') || '없음'}</div>
+    </div>
+  `;
+}
 
-  // 1. 개인별 막대차트
-  const ctx1 = document.getElementById('barChart');
-  if(barChart) barChart.destroy();
-  barChart = new Chart(ctx1, {
-    type:'bar',
-    data:{
-      labels: ROWS.map(r => r.name),
-      datasets:[{
-        label: selectedMetric,
-        data: ROWS.map(r => r[selectedMetric] || 0),
-        backgroundColor: 'rgba(47, 111, 237, 0.85)',
-        borderRadius: 8
+function renderMainChart(key) {
+  const ctx = document.getElementById('mainChart');
+  document.getElementById('chartTitle').textContent = key + " 달성률 그래프";
+  if (mainChart) mainChart.destroy();
+  
+  const labels = DATA.rows.map(r => r.name);
+  const rates = DATA.rows.map(r => r.rate[key] || 0);
+
+  mainChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: key + ' 달성률 (%)',
+        data: rates,
+        borderRadius: 8,
+        backgroundColor: rates.map(v => v >= 100 ? 'rgba(22,163,74,0.85)' : v >= 60 ? 'rgba(217,119,6,0.75)' : 'rgba(220,38,38,0.65)')
       }]
     },
-    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
-  });
-
-  // 2. 전체 요약 차트
-  const ctx2 = document.getElementById('summaryChart');
-  if(summaryChart) summaryChart.destroy();
-  const totals = METRICS.map(m => ROWS.reduce((sum, r) => sum + (r[m] || 0), 0));
-  summaryChart = new Chart(ctx2, {
-    type:'line',
-    data:{
-      labels: METRICS,
-      datasets:[{
-        label:'구역 전체 달성수',
-        data: totals,
-        borderColor:'#16a34a',
-        backgroundColor:'rgba(22, 163, 74, 0.1)',
-        fill:true,
-        tension:0.3
-      }]
-    },
-    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: 100 } } }
   });
 }
 
-// 초기화 호출
-initMetricSelect();
+function renderTable() {
+  const el = document.getElementById('detailTable');
+  el.innerHTML = DATA.rows.map(r => {
+    const avg = Math.round((r.rate["찾B"] + r.rate["만픽"] + r.rate["찾A"] + r.rate["합B"]) / 4);
+    const cls = avg >= 100 ? 'good' : avg >= 60 ? 'mid' : 'low';
+    const status = avg >= 100 ? '달성' : avg >= 60 ? '진행' : '보완';
+    return `
+      <tr>
+        <td>${r.name}</td>
+        <td><span class="heat-cell">${r.rate["찾B"]}%</span></td>
+        <td><span class="heat-cell">${r.rate["만픽"]}%</span></td>
+        <td><span class="heat-cell">${r.rate["찾A"]}%</span></td>
+        <td><span class="heat-cell">${r.rate["합B"]}%</span></td>
+        <td><b>${avg}%</b></td>
+        <td><span class="status ${cls}">${status}</span></td>
+      </tr>
+    `;
+  }).join('');
+}
+
 loadData();
 </script>
 </body>
