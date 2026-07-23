@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>3구역 주간 달성률 대시보드</title>
+<title>3구역 전도 현황 & 주간 달성률 대시보드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   :root {
@@ -14,16 +14,27 @@
   * { box-sizing:border-box; }
   body { margin:0; font-family:"Pretendard","Apple SD Gothic Neo",sans-serif; background:linear-gradient(180deg,#f7f9fd 0%,#eef3fb 100%); color:var(--text); }
   .wrap { max-width:1440px; margin:0 auto; padding:24px 16px; }
+  .section-divider { border:0; height:2px; background:var(--line); margin:40px 0; }
   .hero { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:20px; flex-wrap:wrap; }
-  .hero h1 { margin:0 0 6px; font-size:28px; }
+  .hero h1 { margin:0 0 6px; font-size:26px; }
+  .hero h2 { margin:0 0 6px; font-size:24px; color:var(--navy); }
   .toolbar { display:flex; gap:12px; align-items:center; background:rgba(255,255,255,.8); padding:10px 16px; border-radius:999px; border:1px solid var(--line); box-shadow:var(--shadow); }
   label { font-size:13px; font-weight:bold; color:var(--muted); }
   select { border:1px solid var(--line); border-radius:999px; padding:8px 12px; font-size:14px; background:#fff; cursor:pointer; }
-  .grid { display:grid; grid-template-columns:1.1fr 1.1fr .8fr; gap:18px; margin-bottom:18px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+  .grid3 { display:grid; grid-template-columns:1.1fr 1.1fr .8fr; gap:18px; margin-bottom:18px; }
   .layout2 { display:grid; grid-template-columns:1.25fr .75fr; gap:18px; margin-bottom:18px; }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; }
   .card h3 { margin:0 0 4px; font-size:18px; }
   .sub { color:var(--muted); font-size:12px; margin-bottom:14px; }
+  .chartbox { height:320px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:#f4f8ff; padding:10px; border-bottom:1px solid var(--line); text-align:center; }
+  td { padding:10px; border-bottom:1px solid #edf2f9; text-align:center; }
+  td:first-child { text-align:left; font-weight:bold; }
+  .table-wrap { overflow-x:auto; max-height:400px; border:1px solid var(--line); border-radius:12px; }
+  
+  /* 주간 지표 전용 스타일 */
   .metric-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
   .metric { background:#f8fbff; border:1px solid #e3ebf7; border-radius:16px; padding:12px; }
   .metric .label { font-size:12px; color:var(--muted); font-weight:bold; margin-bottom:6px; }
@@ -36,62 +47,117 @@
   .leaders { display:grid; gap:10px; }
   .leader { display:flex; align-items:center; justify-content:space-between; background:#f8fbff; border:1px solid #e3ebf7; border-radius:14px; padding:10px 12px; }
   .badge { padding:6px 10px; border-radius:999px; background:#eff6ff; color:#2459c3; font-weight:bold; font-size:12px; }
-  .chartbox { height:320px; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th { background:#f4f8ff; padding:10px; border-bottom:1px solid var(--line); text-align:center; }
-  td { padding:10px; border-bottom:1px solid #edf2f9; text-align:center; }
-  td:first-child { text-align:left; font-weight:bold; }
-  .table-wrap { overflow-x:auto; max-height:420px; border:1px solid var(--line); border-radius:12px; }
   .heat-cell { display:inline-block; min-width:50px; padding:5px 8px; border-radius:8px; font-weight:bold; }
   .status { display:inline-flex; padding:4px 8px; border-radius:999px; font-weight:bold; font-size:11px; }
   .good { background:#ecfdf3; color:#15803d; } .mid { background:#fff7ed; color:#c2410c; } .low { background:#fef2f2; color:#dc2626; }
-  @media(max-width:1024px) { .grid, .layout2 { grid-template-columns:1fr; } }
+  
+  @media(max-width:1024px) { .grid, .grid3, .layout2 { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <div class="wrap">
+
+  <!-- ========================================== -->
+  <!-- 1. [상단] 전체 누적 전도 현황 대시보드 -->
+  <!-- ========================================== -->
   <section class="hero">
     <div>
-      <h1>3구역 주간 달성률 대시보드</h1>
-      <p style="margin:0; color:var(--muted); font-size:13px;">주간 목표 대비 실적 달성률 현황입니다.</p>
+      <h1>📊 3구역 누적 전도 현황 대시보드</h1>
+      <p style="margin:0; color:var(--muted); font-size:13px;">구글 시트 실시간 연동 누적 집계 데이터</p>
     </div>
     <div class="toolbar">
-      <label for="weekSelect">기준 주차</label>
-      <select id="weekSelect" onchange="loadData()"></select>
-      <label for="metricSelect" style="margin-left:10px;">비교 항목</label>
-      <select id="metricSelect" onchange="renderAll()"></select>
+      <label for="monthSelect">조회 월</label>
+      <select id="monthSelect" onchange="loadTotalData()">
+        <option value="">전체 기간</option>
+        <option value="2025-12">2025년 12월</option>
+        <option value="2026-01">2026년 1월</option>
+        <option value="2026-02">2026년 2월</option>
+        <option value="2026-03">2026년 3월</option>
+        <option value="2026-04">2026년 4월</option>
+        <option value="2026-05">2026년 5월</option>
+        <option value="2026-06">2026년 6월</option>
+        <option value="2026-07">2026년 7월</option>
+      </select>
+      <label for="metricSelectTotal" style="margin-left:10px;">비교 항목</label>
+      <select id="metricSelectTotal" onchange="renderTotalCharts()"></select>
     </div>
   </section>
 
   <section class="grid">
     <div class="card">
+      <h3 id="totalChartTitle">인도자별 단계 비교</h3>
+      <div class="sub">선택한 단계의 인도자별 누적 달성 인원입니다.</div>
+      <div class="chartbox"><canvas id="barChartTotal"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>전체 단계별 합계</h3>
+      <div class="sub">3구역 전체 누적 달성 현황입니다.</div>
+      <div class="chartbox"><canvas id="summaryChartTotal"></canvas></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>인도자별 상세 달성 현황 (누적)</h3>
+    <div class="sub">모든 단계별 누적 합계 표입니다.</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>인도자</th><th>구역</th><th>찾B</th><th>만픽</th><th>찾A</th><th>합B</th><th>합A</th><th>영따</th><th>복A</th><th>복B</th><th>복C</th><th>센터등록</th>
+          </tr>
+        </thead>
+        <tbody id="tableBodyTotal"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="section-divider" />
+
+  <!-- ========================================== -->
+  <!-- 2. [하단] 5부 스타일 주간 목표 달성률 대시보드 -->
+  <!-- ========================================== -->
+  <section class="hero">
+    <div>
+      <h2>🎯 3구역 주간 목표 달성률 대시보드</h2>
+      <p style="margin:0; color:var(--muted); font-size:13px;">주간 목표 대비 실적 달성률 현황 (5부 스타일)</p>
+    </div>
+    <div class="toolbar">
+      <label for="weekSelect">기준 주차</label>
+      <select id="weekSelect" onchange="loadWeeklyData()"></select>
+      <label for="metricSelectWeekly" style="margin-left:10px;">비교 항목</label>
+      <select id="metricSelectWeekly" onchange="renderWeeklyAll()"></select>
+    </div>
+  </section>
+
+  <section class="grid3">
+    <div class="card">
       <h3>주간 핵심 지표</h3>
       <div class="sub">3구역 전체 목표 및 결과입니다.</div>
-      <div id="metrics" class="metric-grid"></div>
+      <div id="metricsWeekly" class="metric-grid"></div>
     </div>
 
     <div class="card">
-      <h3 id="barsTitle">개인별 달성률 비교</h3>
+      <h3 id="barsTitleWeekly">개인별 달성률 비교</h3>
       <div class="sub">선택한 항목 기준 개인별 달성률입니다.</div>
-      <div id="bars" class="bars"></div>
+      <div id="barsWeekly" class="bars"></div>
     </div>
 
     <div class="card">
       <h3>선택 항목 리더</h3>
       <div class="sub">선택 항목 기준 상위 현황입니다.</div>
-      <div id="leaders" class="leaders"></div>
+      <div id="leadersWeekly" class="leaders"></div>
     </div>
   </section>
 
   <section class="layout2">
     <div class="card">
-      <h3 id="chartTitle">개인별 막대그래프</h3>
+      <h3 id="chartTitleWeekly">개인별 막대그래프</h3>
       <div class="sub">목표 달성률 시각화 차트입니다.</div>
-      <div class="chartbox"><canvas id="mainChart"></canvas></div>
+      <div class="chartbox"><canvas id="mainChartWeekly"></canvas></div>
     </div>
 
     <div class="card">
-      <h3>개인별 달성률 테이블</h3>
+      <h3>개인별 주간 달성률 테이블</h3>
       <div class="sub">주간 달성률 히트맵 표입니다.</div>
       <div class="table-wrap">
         <table>
@@ -100,58 +166,150 @@
               <th>이름</th><th>찾B</th><th>만픽</th><th>찾A</th><th>합B</th><th>평균</th><th>상태</th>
             </tr>
           </thead>
-          <tbody id="detailTable"></tbody>
+          <tbody id="detailTableWeekly"></tbody>
         </table>
       </div>
     </div>
   </section>
+
 </div>
 
 <script>
-// 수정된 Apps Script 웹 앱 URL
 const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwGp-oDp-__zxx4DFWi36EPmZXIyg___cSDubEEaJGEE0NKBXzGsPUxMI1Gj8aHKkAS/exec";
 
-const METRICS = ["찾B", "만픽", "찾A", "합B"];
-let DATA = null;
-let mainChart;
+// ----------------------------------------------------
+// [공통 & 변수]
+// ----------------------------------------------------
+const METRICS_TOTAL = ["찾B","만픽","찾A","합B","합A","영따","복A","복B","복C","센터등록"];
+const METRICS_WEEKLY = ["찾B", "만픽", "찾A", "합B"];
 
-// 비교항목 드롭다운 생성
-const metricSelect = document.getElementById('metricSelect');
-METRICS.forEach(m => {
-  const opt = document.createElement('option');
-  opt.value = m; opt.textContent = m + " (주간)";
-  metricSelect.appendChild(opt);
-});
+let TOTAL_ROWS = [];
+let WEEKLY_DATA = null;
 
-async function loadData() {
+let barChartTotal, summaryChartTotal, mainChartWeekly;
+
+// 초기 드롭다운 셋팅
+function initDropdowns() {
+  const mTotal = document.getElementById('metricSelectTotal');
+  mTotal.innerHTML = '';
+  METRICS_TOTAL.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    mTotal.appendChild(opt);
+  });
+
+  const mWeekly = document.getElementById('metricSelectWeekly');
+  mWeekly.innerHTML = '';
+  METRICS_WEEKLY.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = m + " (주간)";
+    mWeekly.appendChild(opt);
+  });
+}
+
+// ----------------------------------------------------
+// 1. 상단 누적 대시보드 로직
+// ----------------------------------------------------
+async function loadTotalData() {
+  const month = document.getElementById('monthSelect').value;
+  const url = month ? `${GOOGLE_SHEET_API_URL}?month=${month}` : GOOGLE_SHEET_API_URL;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    TOTAL_ROWS = Array.isArray(data) ? data : (data.rows ? data.rows.map(r=>({name:r.name, zone:r.zone, ...r.actual})) : []);
+    renderTotalTable();
+    renderTotalCharts();
+  } catch (e) { console.error("상단 데이터 로드 실패", e); }
+}
+
+function renderTotalTable() {
+  const tbody = document.getElementById('tableBodyTotal');
+  if(!TOTAL_ROWS || TOTAL_ROWS.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="12">데이터가 없습니다.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = TOTAL_ROWS.map(r => `
+    <tr>
+      <td>${r.name || ''}</td><td>${r.zone || ''}</td>
+      ${METRICS_TOTAL.map(m => `<td><b>${r[m] || 0}</b></td>`).join('')}
+    </tr>
+  `).join('');
+}
+
+function renderTotalCharts() {
+  const metricSelect = document.getElementById('metricSelectTotal');
+  const selectedMetric = metricSelect.value || "찾B";
+  document.getElementById('totalChartTitle').textContent = `인도자별 ${selectedMetric} 달성 현황`;
+
+  if(!TOTAL_ROWS || TOTAL_ROWS.length === 0) return;
+
+  const ctx1 = document.getElementById('barChartTotal');
+  if(barChartTotal) barChartTotal.destroy();
+  barChartTotal = new Chart(ctx1, {
+    type:'bar',
+    data:{
+      labels: TOTAL_ROWS.map(r => r.name),
+      datasets:[{
+        label: selectedMetric,
+        data: TOTAL_ROWS.map(r => r[selectedMetric] || 0),
+        backgroundColor: 'rgba(47, 111, 237, 0.85)',
+        borderRadius: 8
+      }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  const ctx2 = document.getElementById('summaryChartTotal');
+  if(summaryChartTotal) summaryChartTotal.destroy();
+  const totals = METRICS_TOTAL.map(m => TOTAL_ROWS.reduce((sum, r) => sum + (r[m] || 0), 0));
+  summaryChartTotal = new Chart(ctx2, {
+    type:'line',
+    data:{
+      labels: METRICS_TOTAL,
+      datasets:[{
+        label:'구역 전체 달성수',
+        data: totals,
+        borderColor:'#16a34a',
+        backgroundColor:'rgba(22, 163, 74, 0.1)',
+        fill:true,
+        tension:0.3
+      }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+  });
+}
+
+// ----------------------------------------------------
+// 2. 하단 주간 달성률 대시보드 로직
+// ----------------------------------------------------
+async function loadWeeklyData() {
   const week = document.getElementById('weekSelect').value;
   const url = week ? `${GOOGLE_SHEET_API_URL}?week=${week}` : GOOGLE_SHEET_API_URL;
   try {
     const res = await fetch(url);
-    DATA = await res.json();
+    WEEKLY_DATA = await res.json();
     
-    // 주차 드롭다운 생성
     const weekSelect = document.getElementById('weekSelect');
-    if (DATA.availableWeeks && weekSelect.children.length === 0) {
-      DATA.availableWeeks.forEach(w => {
+    if (WEEKLY_DATA.availableWeeks && weekSelect.children.length === 0) {
+      WEEKLY_DATA.availableWeeks.forEach(w => {
         const opt = document.createElement('option');
         opt.value = w; opt.textContent = w + " 주간";
-        if (w === DATA.selectedWeek) opt.selected = true;
+        if (w === WEEKLY_DATA.selectedWeek) opt.selected = true;
         weekSelect.appendChild(opt);
       });
     }
 
-    renderTopMetrics();
-    renderTable();
-    renderAll();
-  } catch (e) { console.error("데이터 로드 실패", e); }
+    renderWeeklyMetrics();
+    renderWeeklyTable();
+    renderWeeklyAll();
+  } catch (e) { console.error("하단 주간 데이터 로드 실패", e); }
 }
 
-function renderTopMetrics() {
-  const el = document.getElementById('metrics');
-  if (!DATA || !DATA.totals) return;
-  el.innerHTML = METRICS.map(m => {
-    const t = DATA.totals[m] || { goal: 0, result: 0, rate: 0 };
+function renderWeeklyMetrics() {
+  const el = document.getElementById('metricsWeekly');
+  if (!WEEKLY_DATA || !WEEKLY_DATA.totals) return;
+  el.innerHTML = METRICS_WEEKLY.map(m => {
+    const t = WEEKLY_DATA.totals[m] || { goal: 0, result: 0, rate: 0 };
     return `
       <div class="metric">
         <div class="label">${m}(주간)</div>
@@ -162,18 +320,18 @@ function renderTopMetrics() {
   }).join('');
 }
 
-function renderAll() {
-  const key = metricSelect.value;
-  renderBars(key);
-  renderLeaders(key);
-  renderMainChart(key);
+function renderWeeklyAll() {
+  const key = document.getElementById('metricSelectWeekly').value;
+  renderWeeklyBars(key);
+  renderWeeklyLeaders(key);
+  renderWeeklyMainChart(key);
 }
 
-function renderBars(key) {
-  document.getElementById('barsTitle').textContent = key + " 개인별 달성률";
-  if (!DATA || !DATA.rows) return;
-  const sorted = [...DATA.rows].sort((a,b) => (b.rate[key]||0) - (a.rate[key]||0));
-  const el = document.getElementById('bars');
+function renderWeeklyBars(key) {
+  document.getElementById('barsTitleWeekly').textContent = key + " 개인별 달성률";
+  if (!WEEKLY_DATA || !WEEKLY_DATA.rows) return;
+  const sorted = [...WEEKLY_DATA.rows].sort((a,b) => (b.rate[key]||0) - (a.rate[key]||0));
+  const el = document.getElementById('barsWeekly');
   el.innerHTML = sorted.map(r => `
     <div class="bar-row">
       <div style="font-weight:bold;">${r.name}</div>
@@ -184,13 +342,13 @@ function renderBars(key) {
   `).join('');
 }
 
-function renderLeaders(key) {
-  if (!DATA || !DATA.rows) return;
-  const sorted = [...DATA.rows].sort((a,b) => (b.rate[key]||0) - (a.rate[key]||0));
+function renderWeeklyLeaders(key) {
+  if (!WEEKLY_DATA || !WEEKLY_DATA.rows) return;
+  const sorted = [...WEEKLY_DATA.rows].sort((a,b) => (b.rate[key]||0) - (a.rate[key]||0));
   const top = sorted[0] || { name: '없음', zone: '', rate: {} };
-  const over100 = DATA.rows.filter(r => (r.rate[key]||0) >= 100);
+  const over100 = WEEKLY_DATA.rows.filter(r => (r.rate[key]||0) >= 100);
 
-  document.getElementById('leaders').innerHTML = `
+  document.getElementById('leadersWeekly').innerHTML = `
     <div class="leader">
       <div><span style="font-size:12px;color:var(--muted);">1위 인도자</span><br><strong>${top.name} (${top.zone})</strong></div>
       <div class="badge">${top.rate[key]||0}%</div>
@@ -202,16 +360,16 @@ function renderLeaders(key) {
   `;
 }
 
-function renderMainChart(key) {
-  const ctx = document.getElementById('mainChart');
-  document.getElementById('chartTitle').textContent = key + " 달성률 그래프";
-  if (mainChart) mainChart.destroy();
-  if (!DATA || !DATA.rows) return;
+function renderWeeklyMainChart(key) {
+  const ctx = document.getElementById('mainChartWeekly');
+  document.getElementById('chartTitleWeekly').textContent = key + " 달성률 그래프";
+  if (mainChartWeekly) mainChartWeekly.destroy();
+  if (!WEEKLY_DATA || !WEEKLY_DATA.rows) return;
   
-  const labels = DATA.rows.map(r => r.name);
-  const rates = DATA.rows.map(r => r.rate[key] || 0);
+  const labels = WEEKLY_DATA.rows.map(r => r.name);
+  const rates = WEEKLY_DATA.rows.map(r => r.rate[key] || 0);
 
-  mainChart = new Chart(ctx, {
+  mainChartWeekly = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: labels,
@@ -226,10 +384,10 @@ function renderMainChart(key) {
   });
 }
 
-function renderTable() {
-  const el = document.getElementById('detailTable');
-  if (!DATA || !DATA.rows) return;
-  el.innerHTML = DATA.rows.map(r => {
+function renderWeeklyTable() {
+  const el = document.getElementById('detailTableWeekly');
+  if (!WEEKLY_DATA || !WEEKLY_DATA.rows) return;
+  el.innerHTML = WEEKLY_DATA.rows.map(r => {
     const avg = Math.round(((r.rate["찾B"]||0) + (r.rate["만픽"]||0) + (r.rate["찾A"]||0) + (r.rate["합B"]||0)) / 4);
     const cls = avg >= 100 ? 'good' : avg >= 60 ? 'mid' : 'low';
     const status = avg >= 100 ? '달성' : avg >= 60 ? '진행' : '보완';
@@ -247,7 +405,10 @@ function renderTable() {
   }).join('');
 }
 
-loadData();
+// 최초 실행
+initDropdowns();
+loadTotalData();
+loadWeeklyData();
 </script>
 </body>
 </html>
